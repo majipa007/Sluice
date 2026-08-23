@@ -1,0 +1,15 @@
+# Project-local toolchain. Committed on purpose: `mise install` gives anyone
+# cloning this repo the exact same tools.
+#
+# goose and sqlc live here rather than in go.mod as `go tool` dependencies
+# because they are standalone binaries this app never imports. Pinning goose in
+# go.mod would drag in its drivers for ClickHouse, MSSQL, MySQL, Vertica, YDB,
+# Turso and SQLite — 60+ indirect deps in a Postgres-only project.
+#
+# Versions are exact, not "latest": sqlc generates code, so an unpinned version
+# could silently produce different Go from the same SQL.
+
+[tools]
+go = "1.27"
+"go:github.com/pressly/goose/v3/cmd/goose" = "3.27.3"
+"go:github.com/sqlc-dev/sqlc/cmd/sqlc" = "1.31.1"

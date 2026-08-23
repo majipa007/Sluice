@@ -101,26 +101,32 @@ Not now.
 `docker compose up -d --wait` reports all three healthy and pg-admin starts
 only after postgres is Healthy.
 
-**BLOCKER — do this first:** Go is not installed. Tools here are managed with
-`mise`, and Go was never added.
+**Toolchain (was a blocker, now resolved).** Go was not installed at all.
+Installed Go 1.27 via mise, then added `goose` and `sqlc` as project-local
+pinned tools in `mise.toml`. `go.mod` is back to two lines.
 
-```bash
-mise use -g go@latest
-go version                     # confirm
-make tools                     # installs goose + sqlc CLIs
-```
+Tried `go get -tool` first and reverted it: goose's CLI bundles drivers for
+ClickHouse, MSSQL, MySQL, Vertica, YDB, Turso and SQLite, so pinning it in
+go.mod pulled **60+ indirect dependencies** into a Postgres-only project and
+silently bumped the go directive to 1.25.7. Both tools are standalone binaries
+this app never imports, so they belong in the tool manager rather than the
+app's dependency graph. Versions in `mise.toml` are exact, not `latest` —
+sqlc generates code, so an unpinned version could quietly emit different Go
+from identical SQL.
 
-Then bump `go.mod` from `go 1.22.2` to whatever `go version` reports — 1.22 is
-the floor for the routing patterns, but there is no reason to pin to it.
+**Verified working:** `make dev` runs end to end and is idempotent —
+containers healthy, `goose up` applied `00001_init.sql` (version 1 recorded),
+grants applied, `sluice_app` password set, 6 fixtures loaded. `sqlc compile`
+passes, so `sqlc.yaml` plus the schema and all queries are valid.
 
-**Next action:** after the blocker, run `make db-setup` (migrate + grants + app
-password) and then `make verify-schema` — that is session 2's gate, and it is
-one command because the SQL is already written and tested. Session 2's real
-work is then the Go half: wire goose with `//go:embed` so migrations ship
-inside the binary, replacing the CLI call in the `migrate` target. Spec:
-[[09_project_layout#Migrations]].
+**Next action:** session 2's Go half — wire goose behind `//go:embed` so
+migrations ship inside the binary, replacing the CLI call in the `migrate`
+target. Spec: [[09_project_layout#Migrations]]. After that, session 3 is
+`internal/config`.
 
-**Open question:** none.
+**Open question:** `go.mod` says `go 1.24` while mise installs Go 1.27. That is
+deliberate — 1.24 is the minimum for the language features used and keeps the
+module buildable on older toolchains. Revisit only if something needs newer.
 
 **Learned:** `depends_on: condition: service_healthy` is observable in the
 `up --wait` output — pg-admin's "Starting" appears only after postgres logs
