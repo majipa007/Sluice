@@ -56,13 +56,20 @@ sluice/
 │           ├── stubs.py           # echo, boom, unstable, slow
 │           └── vllm.py
 ├── deploy/
-│   ├── docker-compose.yaml
-│   └── rabbitmq.conf
+│   ├── rabbitmq.conf        # mounted to conf.d/ — consumer_timeout
+│   ├── env.example          # copy to .env at the repo root
+│   └── sql/
+│       └── 01_app_role.sql  # sluice_app role + least-privilege grants
 ├── docs/                          # this vault
+├── docker-compose.yaml      # repo root, with an explicit `name: sluice`
 ├── sqlc.yaml
 ├── Makefile
 └── go.mod
 ```
+
+**Why the compose file stays at the repo root.** Compose derives its project name from the containing directory, so moving the file into `deploy/` would rename the project from `sluice` to `deploy` and orphan the existing `sluice_postgres-data` volume. Setting `name: sluice` explicitly in the file removes the dependency on directory location entirely — worth doing regardless, since it makes the project name stable no matter where the file lives or which directory you run from.
+
+Roles and grants live in `deploy/sql/` rather than `migrations/` for two reasons: roles are cluster-level provisioning rather than per-database schema, so goose's version table should not claim to own them; and `sqlc.yaml` points at `migrations/`, which therefore must contain only parseable schema DDL.
 
 Both `cmd/reaper` and `cmd/publisher` are separate binaries because they have genuinely separate failure domains and tick rates. If running four containers locally is tedious, compile them as subcommands of one `sluice-workers` binary — that is a packaging decision, not an architectural one.
 
@@ -207,7 +214,7 @@ That test is the single most valuable one in the repo, and it is meaningless wit
 # Tabs, not spaces.
 .PHONY: up down logs migrate sqlc build test test-int lint fmt drill1 drill2 drill3 drill4 drill5
 
-COMPOSE := docker compose -f deploy/docker-compose.yaml
+COMPOSE := docker compose   # compose file is at the repo root; see note below
 
 up:            ## start infrastructure and services
 	$(COMPOSE) up -d --build

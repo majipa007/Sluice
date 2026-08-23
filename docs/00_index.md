@@ -27,6 +27,10 @@ The root `README.MD` states **why** the system exists and what it guarantees. Th
 | 8 | [[08_observability]] | Metrics, traces, logs, the alerts worth having |
 | 9 | [[09_project_layout]] | Directory tree, module boundaries, Makefile targets |
 | 10 | [[10_roadmap]] | Phases, each with a done-gate |
+| 11 | [[11_learning_plan]] | The same work sliced into 1–2 h sessions, with the Go concept each one teaches |
+| 12 | [[12_session_log]] | Running log — where you stopped and what to do next |
+
+**Building this?** Start at [[11_learning_plan#Stage A — Phase 0: foundations]] and keep [[12_session_log]] open. Read notes 1–4 first; the rest are reference you return to per session rather than read front to back.
 
 ---
 
