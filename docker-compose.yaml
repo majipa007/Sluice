@@ -1,41 +1,72 @@
-services:
-  pg-admin:
-    image: dpage/pgadmin4:latest
-    ports:
-      - "5050:80"
-    environment:
-      PGADMIN_DEFAULT_EMAIL: pg_admin_gamile@gmail.com
-      PGADMIN_DEFAULT_PASSWORD: admin_password
-    depends_on:
-      - postgres
-    networks:
-      - sluice-network
-    volumes:
-      - pg-admin-data:/var/lib/pgadmin
+# Local development only. Credentials come from .env (gitignored) with
+# dev-safe fallbacks below; nothing here is suitable beyond a laptop.
+name: sluice
 
+services:
   postgres:
     image: postgres:17-alpine
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres_password
-      POSTGRES_DB: sluice
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_password}
+      POSTGRES_DB: ${POSTGRES_DB:-sluice}
     ports:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks:
       - sluice-network
+    healthcheck:
+      # -U/-d must match the values above or readiness lies.
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-sluice}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
 
   rabbitmq:
     image: rabbitmq:4-management
     environment:
-      RABBITMQ_DEFAULT_USER: sluice
-      RABBITMQ_DEFAULT_PASS: sluice_password
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-sluice}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-sluice_password}
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "5672:5672"     # AMQP
+      - "15672:15672"   # management UI
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
+      # conf.d is additive — the image writes its own 10-defaults.conf, so
+      # mounting here overrides only what we set. Mounting rabbitmq.conf
+      # directly would clobber the image's defaults instead.
+      - ./deploy/rabbitmq.conf:/etc/rabbitmq/conf.d/20-sluice.conf:ro
+    networks:
+      - sluice-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  pg-admin:
+    image: dpage/pgadmin4:latest
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@sluice.local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin_password}
+    ports:
+      - "5050:80"
+    volumes:
+      - pg-admin-data:/var/lib/pgadmin
+    networks:
+      - sluice-network
+    depends_on:
+      postgres:
+        # Waits for the healthcheck, not merely for the container to start.
+        # Bare depends_on is what made the gateway race Postgres on cold boot.
+        condition: service_healthy
+
+  # Added in Phase 1, session 10. Needs:
+  #   stop_grace_period: 120s   <- must exceed SHUTDOWN_GRACE (90s), or Docker
+  #                                SIGKILLs the drain before it finishes and
+  #                                drill 5 fails for the wrong reason.
 
 volumes:
   postgres-data:

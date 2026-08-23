@@ -1,2 +1,15 @@
 .env
 .obsidian
+
+# Go build output
+bin/
+*.test
+*.out
+coverage.*
+
+# Python
+worker/.venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
