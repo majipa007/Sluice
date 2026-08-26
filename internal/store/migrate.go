@@ -10,7 +10,7 @@ import (
 )
 
 
-func Migrate(ctx context.Context, pool *pgxpool.Pool){
+func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
 	goose.SetBaseFS(migrations.FS)
 
 	if err:= goose.SetDialect("postgres"); err !=nil{
@@ -18,7 +18,7 @@ func Migrate(ctx context.Context, pool *pgxpool.Pool){
 	}
 
 	db:= stdlib.OpenDBFromPool(pool)
-	defer db.close()
+	defer db.Close()
 
-	return goose.UpContext(ctx, db , migrations)
+	return goose.UpContext(ctx, db , "migrations")
 }
