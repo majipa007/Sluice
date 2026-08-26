@@ -81,8 +81,8 @@ psql: ## interactive psql shell
 
 db-setup: migrate db-grants db-app-password ## migrate + grants + app password
 
-migrate: ## apply migrations (goose CLI; session 2 adds the embedded path)
-	goose -dir migrations postgres "$(DATABASE_URL)" up
+migrate: ## apply migrations (embedded ia goose library, cmd/ migrate)
+	go run ./cmd/migrate
 
 migrate-down: ## roll back one migration
 	goose -dir migrations postgres "$(DATABASE_URL)" down

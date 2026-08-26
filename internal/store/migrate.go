@@ -20,5 +20,5 @@ func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
 	db:= stdlib.OpenDBFromPool(pool)
 	defer db.Close()
 
-	return goose.UpContext(ctx, db , "migrations")
+	return goose.UpContext(ctx, db , ".")
 }
