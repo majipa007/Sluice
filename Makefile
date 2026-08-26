@@ -81,7 +81,7 @@ psql: ## interactive psql shell
 
 db-setup: migrate db-grants db-app-password ## migrate + grants + app password
 
-migrate: ## apply migrations (embedded ia goose library, cmd/ migrate)
+migrate: ## apply migrations (embedded via goose library, cmd/migrate)
 	go run ./cmd/migrate
 
 migrate-down: ## roll back one migration

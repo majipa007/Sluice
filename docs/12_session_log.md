@@ -69,6 +69,49 @@ Not now.
 
 <!-- newest first -->
 
+## Session 02 — 26/08/2026 — Stage A, Phase 0 (Go half) + start of 03
+
+**Did:** Session 2's Go half is complete. `migrations/embed.go` holds
+`//go:embed *.sql` over an exported `embed.FS`, so the SQL ships inside the
+binary. `internal/store/migrate.go` has `Migrate(ctx, pool) error` — sets the
+base FS, sets the postgres dialect, adapts the pgxpool to a `*sql.DB` via
+`stdlib.OpenDBFromPool`, then calls `goose.UpContext`. `cmd/migrate/main.go` is
+the entrypoint: reads `DATABASE_URL`, 30 s timeout context, builds the pool,
+calls `Migrate`, `os.Exit(1)` on any failure. The `migrate` make target now runs
+`go run ./cmd/migrate` instead of shelling out to the goose CLI.
+
+**Proved it works:** `make migrate-down` (CLI) then `make migrate` (embedded Go
+path) → `OK 00001_init.sql`, `successfully migrated database to version: 1`.
+
+Then started session 3 early: `internal/config/config.go` now has the full
+`Config` struct, `Load()` with env-then-default lookup via `envDuration` /
+`envInt` helpers, and `Validate()` carrying the three boot invariants from
+[[02_tech_stack#Config]]. Builds clean, `go vet` clean. **Written by Claude, not
+typed by hand** — read it before building on it.
+
+**Next action:** write `internal/config/config_test.go` — a table-driven test
+over `Validate()`. One row per invariant with values that should fail, plus a
+row of good defaults that should pass. Use `t.Run(tc.name, ...)` and check with
+`errors.Is` / non-nil error. Then `go test ./internal/config`. That is the part
+of session 3 that is still yours to write.
+
+**Open question:** `cmd/migrate/main.go` still reads `DATABASE_URL` with a bare
+`os.Getenv` rather than going through `config.Load()`. Fine for now — `Load()`
+validates nine settings a migration run does not care about. Revisit at session
+4 when `cmd/gateway` needs the real thing.
+
+**Learned:** `//go:embed` is a compiler directive, not a comment, and it binds
+to the *very next declaration* — a blank line between them silently breaks it.
+The embed root is the directory of the file holding the directive, so
+`goose.UpContext(ctx, db, "migrations")` failed with "migrations directory does
+not exist"; the FS root already *is* `migrations/`, so the path is `"."`.
+Also: `go build cmd/migrate` resolves as a stdlib import path (Go's own source
+has a `cmd/` tree) — `./cmd/migrate` is what means "relative to here".
+
+**Parked:** nothing.
+
+---
+
 ## Session 01 — 23/08/2026 — Stage A, Phase 0 (non-Go half)
 
 **Did:** Everything in Phase 0 that is not Go.
