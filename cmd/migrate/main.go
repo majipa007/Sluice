@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sluice/internal/config"
 	"sluice/internal/store"
 	"time"
 
@@ -11,15 +12,16 @@ import (
 )
 
 func main() {
-	dbURL := os.Getenv("DATABASE_URL")
-	if dbURL == "" {
-		fmt.Fprintln(os.Stderr, "DATABASE_URL is not set")
+	cfg, err := config.Load()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "config error:", err)
+		os.Exit(1)
 	}
 
 	ctx, cancle := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancle()
 
-	pool, err := pgxpool.New(ctx, dbURL)
+	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Failed to connect to the DB ", err)
 		os.Exit(1)
