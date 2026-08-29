@@ -1,8 +1,3 @@
-// Package config reads environment variables into a typed struct, applies
-// defaults, and validates the cross-field invariants that must hold before the
-// process is allowed to start. Hand-written rather than viper/envconfig because
-// the interesting checks compare one setting against another, which a generic
-// loader cannot express. Defaults mirror the table in README.MD.
 package config
 
 import (
@@ -14,8 +9,10 @@ import (
 )
 
 // ErrMissingDatabaseURL is returned when DATABASE_URL is unset or empty.
-// A sentinel so callers can react with errors.Is rather than matching on text.
 var ErrMissingDatabaseURL = errors.New("DATABASE_URL is not set")
+// ErrMissingDatabaseURL is returned when DATABASE_URL is unset or empty.
+var ErrMissingHttpAddr = errors.New("HTTP_ADDR is not set")
+
 
 type Config struct {
 	PrefetchCount      int
@@ -28,17 +25,20 @@ type Config struct {
 	ShedQueueDepth     int
 	ShutdownGrace      time.Duration
 	DatabaseURL        string
+	HttpAddr string
 }
 
-// Load reads the environment, falls back to defaults, and validates. Any error
-// it returns is a reason not to boot.
 func Load() (*Config, error) {
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
 		return nil, ErrMissingDatabaseURL
 	}
+	httpAddr := os.Getenv("HTTP_ADDR")
+	if httpAddr == "" {
+		return nil, ErrMissingHttpAddr 
+	}
 
-	c := &Config{DatabaseURL: databaseURL}
+	c := &Config{DatabaseURL: databaseURL, HttpAddr: httpAddr}
 
 	var err error
 	if c.PrefetchCount, err = envInt("PREFETCH_COUNT", 1); err != nil {
